@@ -7,7 +7,7 @@
 
     :create by: lyncir
     :date: 2018-11-27 11:31:06 (+0800)
-    :last modified date: 2018-11-29 18:02:12 (+0800)
+    :last modified date: 2018-11-29 20:12:11 (+0800)
     :last modified by: lyncir
 """
 import inspect
@@ -27,7 +27,7 @@ def attrs(obj):
     """
     返回一个对象的属性值字典
     """
-    return {i: type(getattr(obj, i)) for i in dir(obj) if (not i.startswith('__') and not inspect.ismethod(getattr(obj, i)))}
+    return {i: getattr(obj, i) for i in dir(obj) if (not i.startswith('__') and not inspect.ismethod(getattr(obj, i)))}
 
 
 def render_column_definitions(model):
