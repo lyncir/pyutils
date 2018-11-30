@@ -7,7 +7,7 @@
 
     :create by: lyncir
     :date: 2018-11-27 10:28:12 (+0800)
-    :last modified date: 2018-11-28 15:38:20 (+0800)
+    :last modified date: 2018-11-30 11:23:36 (+0800)
     :last modified by: lyncir
 """
 import json
@@ -61,6 +61,9 @@ class BaseAdapter(object):
         """
         # 委托的适配对象
         self._record = record
+
+    def update(self, **kw):
+        self.objects.update(self._record.__dict__, **kw)
 
 
 class TcMinisterGroupAdapter(BaseAdapter):

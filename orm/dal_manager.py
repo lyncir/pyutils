@@ -244,6 +244,12 @@ class PyDBLiteDALManager(IModelManager):
             if len(field_opt_split) == 1:
                 field = field_opt_split[0]
                 opt = '='
+
+                # order
+                if field == 'order':
+                    self._order = val.split(',')
+                    continue
+
             elif len(field_opt_split) == 2:
                 field, opt = field_opt_split
             else:
@@ -261,7 +267,33 @@ class PyDBLiteDALManager(IModelManager):
             f = getattr(f, self.operations[opt])(val)
             filters.append(f)
 
-        return [self.po_class(self.dict2obj(**r)) for r in reduce(lambda x, y: x & y, filters)]
+        records = [self.po_class(self.dict2obj(**r)) for r in reduce(lambda x, y: x & y, filters)]
+
+        # 进行排序
+        if self._order:
+            print(3333, self._order)
+            records = sorted(records, key=self.order_func)
+
+        return records
+
+    def order_func(self, record):
+        order_by = []
+        for field in self._order:
+            by_asc = True
+            if field.startswith('-'):
+                _, field = field.split('-')
+                by_asc = False
+
+            if hasattr(record, field):
+                if by_asc:
+                    order_by.append(getattr(record, field))
+                else:
+                    order_by.append(-getattr(record, field))
+
+        return order_by
+
+    def update(self, records, **kw):
+        self.table.update(records, **kw)
 
     def dict2obj(self, **kwargs):
         """

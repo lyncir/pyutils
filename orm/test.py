@@ -7,7 +7,7 @@
 
     :create by: lyncir
     :date: 2018-11-27 11:45:22 (+0800)
-    :last modified date: 2018-11-29 11:27:20 (+0800)
+    :last modified date: 2018-11-30 17:54:02 (+0800)
     :last modified by: lyncir
 """
 from model import render_column_definitions
@@ -38,9 +38,10 @@ TcMinisterGroupAdapter.objects.insert_many(data_list)
 
 
 record = TcMinisterGroupAdapter.objects.get(GroupId=2)
-print(record.GroupId)
+record.update(MinisterId=11)
+print(record.GroupId, type(record), record._record.__dict__)
 
 
-records = TcMinisterGroupAdapter.objects.filter(GroupId__in=[1, 2, 4])
+records = TcMinisterGroupAdapter.objects.filter(GroupId__in=[1, 2, 4], order='-GroupId')
 for r in records:
-    print r
+    print(111, r._record.__dict__)
