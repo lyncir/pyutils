@@ -6,6 +6,7 @@ Author:Bai Jin Ping
 """
 import abc
 from datetime import datetime, date
+from operator import attrgetter
 
 
 class IModelManager(object):
@@ -175,133 +176,6 @@ class IModelManager(object):
         >>> objects.sql_query('UPDATE TbRole SET Sex=0') # 报错,不能执行UPDATE语句
         >>> objects.sql_query('DELETE FROM TbTitle') # 报错,不能执行DELETE语句
         """
-
-
-class PyDBLiteDALDescriptor(object):
-    """
-    peewee数据访问管理类描述器
-    """
-    def __get__(self, instance, owner):
-        return PyDBLiteDALManager(owner.model_class, owner)
-
-
-class PyDBLiteDALManager(IModelManager):
-    """管理peewee数据请求"""
-
-    def __init__(self, model_class, po_class):
-        self.model_class = model_class
-        self.po_class = po_class
-        self.db = model_class.database
-        self.table = self.db[model_class.__name__]
-        self.operations = {
-            '=': '__eq__',
-            'in': '__eq__',
-            'ne': '__ne__',
-            'lt': '__lt__',
-            'lte': '__le__',
-            'gt': '__gt__',
-            'gte': '__ge__',
-        }
-
-    def all(self):
-        """
-        返回所有数据
-        """
-        return [self.po_class(self.dict2obj(**r)) for r in self.table]
-
-    def create(self, **kwargs):
-        """
-        创建一条记录
-        """
-        rec_id = self.table.insert(**kwargs)
-        record = self.table[rec_id]
-        return self.po_class(self.dict2obj(**record))
-
-    def insert_many(self, data_list):
-        """
-        插入多条数据
-        """
-        if not data_list:
-            return
-
-        self.table.insert(data_list)
-
-    def get(self, **kwargs):
-        """
-        查询并返回一个记录
-        """
-        records = self.table(**kwargs)
-        if records and len(records) > 0:
-            return self.po_class(self.dict2obj(**records[0]))
-
-    def filter(self, **kwargs):
-        """
-        查询并返回一个列表 多个条件是AND关系
-        """
-        filters = []
-        for field_opt, val in kwargs.iteritems():
-            field_opt_split = field_opt.rsplit('__')
-            if len(field_opt_split) == 1:
-                field = field_opt_split[0]
-                opt = '='
-
-                # order
-                if field == 'order':
-                    self._order = val.split(',')
-                    continue
-
-            elif len(field_opt_split) == 2:
-                field, opt = field_opt_split
-            else:
-                raise NotImplementedError
-
-            # 如果in的元素是空集,则返回None
-            if opt == 'in':
-                if val:
-                    # 列表元素转换为字符型
-                    val = [str(v) if type(v) is not str else v for v in val]
-                else:
-                    return []
-
-            f = self.table.filter(field)
-            f = getattr(f, self.operations[opt])(val)
-            filters.append(f)
-
-        records = [self.po_class(self.dict2obj(**r)) for r in reduce(lambda x, y: x & y, filters)]
-
-        # 进行排序
-        if self._order:
-            print(3333, self._order)
-            records = sorted(records, key=self.order_func)
-
-        return records
-
-    def order_func(self, record):
-        order_by = []
-        for field in self._order:
-            by_asc = True
-            if field.startswith('-'):
-                _, field = field.split('-')
-                by_asc = False
-
-            if hasattr(record, field):
-                if by_asc:
-                    order_by.append(getattr(record, field))
-                else:
-                    order_by.append(-getattr(record, field))
-
-        return order_by
-
-    def update(self, records, **kw):
-        self.table.update(records, **kw)
-
-    def dict2obj(self, **kwargs):
-        """
-        创建一个model对象
-        """
-        obj = object.__new__(self.model_class)
-        obj.__dict__ = kwargs
-        return obj
 
 
 class PeeweeDALDescriptor(object):
@@ -931,3 +805,125 @@ class TransactionDelegator(object):
 
     def __new__(cls, *args, **kwargs):
         return cls.transaction_class(*args, **kwargs)
+
+
+class PyDBLiteDALDescriptor(object):
+    """
+    peewee数据访问管理类描述器
+    """
+    def __get__(self, instance, owner):
+        return PyDBLiteDALManager(owner.model_class, owner)
+
+
+class PyDBLiteDALManager(IModelManager):
+    """管理peewee数据请求"""
+
+    def __init__(self, model_class, po_class):
+        self.model_class = model_class
+        self.po_class = po_class
+        self.db = model_class.database
+        self.table = self.db[model_class.__name__]
+        self.operations = {
+            '=': '__eq__',
+            'in': '__eq__',
+            'ne': '__ne__',
+            'lt': '__lt__',
+            'lte': '__le__',
+            'gt': '__gt__',
+            'gte': '__ge__',
+        }
+
+    def all(self):
+        """
+        返回所有数据
+        """
+        return [self.po_class(self.dict2obj(**r)) for r in self.table]
+
+    def create(self, **kwargs):
+        """
+        创建一条记录
+        """
+        rec_id = self.table.insert(**kwargs)
+        record = self.table[rec_id]
+        return self.po_class(self.dict2obj(**record))
+
+    def insert_many(self, data_list):
+        """
+        插入多条数据
+        """
+        if not data_list:
+            return
+
+        self.table.insert(data_list)
+
+    def get(self, **kwargs):
+        """
+        查询并返回一个记录
+        """
+        records = self.table(**kwargs)
+        if records and len(records) > 0:
+            return self.po_class(self.dict2obj(**records[0]))
+
+    def filter(self, **kwargs):
+        """
+        查询并返回一个列表 多个条件是AND关系
+        """
+        filters = []
+        for field_opt, val in kwargs.iteritems():
+            field_opt_split = field_opt.rsplit('__')
+            if len(field_opt_split) == 1:
+                field = field_opt_split[0]
+                opt = '='
+
+                # order
+                if field == 'order':
+                    self._order = val.split(',')
+                    continue
+
+            elif len(field_opt_split) == 2:
+                field, opt = field_opt_split
+            else:
+                raise NotImplementedError
+
+            # 如果in的元素是空集,则返回None
+            if opt == 'in':
+                if val:
+                    # 列表元素转换为字符型
+                    val = [str(v) if type(v) is not str else v for v in val]
+                else:
+                    return []
+
+            f = self.table.filter(field)
+            f = getattr(f, self.operations[opt])(val)
+            filters.append(f)
+
+        records = [self.po_class(self.dict2obj(**r)) for r in reduce(lambda x, y: x & y, filters)]
+
+        # 进行排序
+        if self._order:
+            records = self.order_func(records)
+
+        return records
+
+    def order_func(self, rows):
+        # 复合排序需要从右到左
+        for field in self._order[::-1]:
+            by_asc = True
+            if field.startswith('-'):
+                _, field = field.split('-')
+                by_asc = False
+
+            rows = sorted(rows, key=attrgetter(field), reverse=(not by_asc))
+
+        return rows
+
+    def update(self, records, **kw):
+        self.table.update(records, **kw)
+
+    def dict2obj(self, **kwargs):
+        """
+        创建一个model对象
+        """
+        obj = object.__new__(self.model_class)
+        obj.__dict__ = kwargs
+        return obj
