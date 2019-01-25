@@ -11,7 +11,7 @@
 
     :create by: lyncir
     :date: 2018-11-17 15:23:50 (+0800)
-    :last modified date: 2019-01-24 18:02:06 (+0800)
+    :last modified date: 2019-01-25 09:47:53 (+0800)
     :last modified by: lyncir
 """
 import datetime
@@ -39,8 +39,12 @@ def local_datetime(utc_dt_aware, tz=None):
     :return: 带时区的本地时间
     :rtype: datetime
     """
-    if not tz:
+    if tz is None:
         tz = tzlocal.get_localzone().zone
+
+    # 时区都为UTC
+    if tz == 'UTC':
+        return utc_dt_aware
 
     return utc_dt_aware.astimezone(pytz.timezone(tz))
 
@@ -54,10 +58,14 @@ def utc_datetime(local_dt_aware, tz='UTC'):
     :return: 带时区的UTC时间
     :rtype: datetime
     """
+    # 时区一致
+    if local_dt_aware.tzinfo == pytz.timezone(tz):
+        return local_dt_aware
+
     return local_dt_aware.astimezone(pytz.timezone(tz))
 
 
-def str_to_datetime(dt_str):
+def str_to_datetime(dt_str, tz='UTC'):
     """
     解析ISO 8601字符串时间格式
 
@@ -65,10 +73,17 @@ def str_to_datetime(dt_str):
         2018-02-04T19:30:00+08:00
 
     :param str dt_str: 时间字符串
+    :param str tz: 时区
     :return: 带时区的时间
     :rtype: datetime
     """
-    return dateutil.parser.parse(dt_str)
+    dt_aware = dateutil.parser.parse(dt_str)
+
+    # 时区一致
+    if dt_aware.tzinfo == pytz.timezone(tz):
+        return dt_aware
+
+    return dt_aware.astimezone(pytz.timezone(tz))
 
 
 def to_timestamp(dt_aware):
@@ -82,31 +97,24 @@ def to_timestamp(dt_aware):
     return dt_aware.timestamp()
 
 
-def timestamp_to_datetime(ts, tz=None):
+def timestamp_to_datetime(ts, tz='UTC'):
     """
     时间戳转换为带时区时间
-    
+
     :param float ts: 时间戳
     :param str tz: 时区字符串
     :return: 带时区的时间
     :rtype: datetime
     """
+    # 转成未带时区的本地时间
+    dt = datetime.datetime.utcfromtimestamp(ts)
+    dt_aware = pytz.utc.localize(dt)
+
     if tz is None:
         tz = tzlocal.get_localzone().zone
 
+    # 都为UTC时间
+    if tz == 'UTC':
+        return dt_aware
 
-now = utc_now()
-print(now)
-
-t1 = local_datetime(now, tz="Asia/Tokyo")
-print(t1)
-
-t2 = utc_datetime(local_datetime(now, tz="Asia/Tokyo"), tz='Asia/Calcutta')
-print(t2)
-
-t3 = str_to_datetime('2018-02-04T19:30:00+08:00')
-print(t3)
-
-print(to_timestamp(now))
-print(to_timestamp(t1))
-print(to_timestamp(t2))
+    return dt_aware.astimezone(pytz.timezone(tz))
